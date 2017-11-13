@@ -94,7 +94,8 @@ extension PhotoAlbumViewController: UICollectionViewDelegate, UICollectionViewDa
         let photoURL = FlickrClient.sharedInstance().photoURLArray[(indexPath as NSIndexPath).row]
         
         // Set the image from the imageURL
-        cell.imageView.image = UIImage(data: try! Data(contentsOf: photoURL))
+        let imageData = try? Data(contentsOf: photoURL)
+        cell.imageView.image = UIImage(data: imageData!)
         
         return cell
     }
