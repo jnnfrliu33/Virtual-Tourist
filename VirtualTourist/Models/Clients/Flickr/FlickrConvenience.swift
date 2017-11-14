@@ -61,17 +61,7 @@ extension FlickrClient {
                 completionHandlerForGetPhotos(nil, error)
             } else {
                 if let photosArray = photosDictionary?[FlickrResponseKeys.Photo] as? [[String: AnyObject]], photosArray.count > 0 {
-                    
-                    var photoURLArray = [URL]()
-                    
-                    for photo in photosArray {
-                        
-                        if let imageURLString = photo[FlickrResponseKeys.MediumURL] as? String {
-                            photoURLArray.append(URL(string: imageURLString)!)
-                        }
-                    }
-                    
-                    completionHandlerForGetPhotos(photoURLArray as AnyObject, nil)
+                    completionHandlerForGetPhotos(photosArray as AnyObject, nil)
                 }
             }
         }
@@ -82,7 +72,7 @@ extension FlickrClient {
     static func bboxString() -> String {
         
         // Ensure bbox is bounded by minimum and maximums
-        if let latitude = PhotoAlbumViewController.coordinate?.latitude, let longitude = PhotoAlbumViewController.coordinate?.longitude {
+        if let latitude = PhotoAlbumViewController.selectedPin?.latitude, let longitude = PhotoAlbumViewController.selectedPin?.longitude {
             let minimumLon = max(longitude - Flickr.SearchBBoxHalfWidth, Flickr.SearchLonRange.0)
             let minimumLat = max(latitude - Flickr.SearchBBoxHalfHeight, Flickr.SearchLatRange.0)
             let maximumLon = min(longitude + Flickr.SearchBBoxHalfWidth, Flickr.SearchLonRange.1)

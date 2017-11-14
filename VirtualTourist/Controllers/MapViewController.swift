@@ -8,10 +8,11 @@
 
 import UIKit
 import MapKit
+import CoreData
 
-// MARK: - MapViewController: UIViewController
+// MARK: - MapViewController: UIViewController, NSFetchedResultsControllerDelegate
 
-class MapViewController: UIViewController {
+class MapViewController: UIViewController, NSFetchedResultsControllerDelegate {
     
     // MARK: Outlets
     
@@ -22,6 +23,26 @@ class MapViewController: UIViewController {
     
     var pinDropGesture: UILongPressGestureRecognizer?
     
+    // Shared context
+    lazy var sharedContext: NSManagedObjectContext = {
+        return CoreDataStack.sharedInstance().context
+    }()
+    
+    // Fetched Results Controller for persisting pins
+    lazy var fetchedResultsController: NSFetchedResultsController = { () -> NSFetchedResultsController<NSFetchRequestResult> in
+        
+        // Create fetch request with sort descriptor
+        let fetchRequest = NSFetchRequest<NSFetchRequestResult>(entityName: "Pin")
+        fetchRequest.sortDescriptors = [NSSortDescriptor(key: "latitude", ascending: true), NSSortDescriptor(key: "longitude", ascending: true)]
+        
+        // Create controller from fetch request
+        let fetchedResultsController = NSFetchedResultsController(fetchRequest: fetchRequest, managedObjectContext: self.sharedContext, sectionNameKeyPath: nil, cacheName: nil)
+        fetchedResultsController.delegate = self
+        
+        return fetchedResultsController
+    }()
+
+    
     // MARK: Life Cycle
 
     override func viewDidLoad() {
@@ -30,6 +51,16 @@ class MapViewController: UIViewController {
         // Set up pin drop gesture
         self.pinDropGesture = UILongPressGestureRecognizer(target: self, action: #selector(self.dropPin))
         self.mapView.addGestureRecognizer(self.pinDropGesture!)
+        
+        // Fetch persisted pins
+        do {
+            try self.fetchedResultsController.performFetch()
+        } catch {
+            print ("Unable to fetch pins!")
+        }
+        
+        // Add annotations from fetchedResultsController
+        self.mapView.addAnnotations(self.fetchedResultsController.fetchedObjects as! [Pin] as [MKAnnotation])
     }
     
     // MARK: Functions
@@ -42,11 +73,22 @@ class MapViewController: UIViewController {
 
         // Only allow pins to be dropped once
         if sender.state == .began {
+            
+            // Create Pin object
+            _ = Pin(latitude: coordinate.latitude as Double, longitude: coordinate.longitude as Double, context: self.sharedContext)
+            
+            // Save context
+            do {
+                try CoreDataStack.sharedInstance().saveContext()
+            } catch {
+                print ("Unable to save context!")
+            }
+            
+            print (fetchedResultsController.fetchedObjects!)
 
             // Set the annotation on the map
             let annotation = MKPointAnnotation()
             annotation.coordinate = coordinate
-            
             self.mapView.addAnnotation(annotation)
         }
     }
@@ -65,6 +107,7 @@ extension MapViewController: MKMapViewDelegate {
         if pinView == nil {
             pinView = MKPinAnnotationView(annotation: annotation, reuseIdentifier: reuseId)
             pinView!.canShowCallout = false
+            pinView!.animatesDrop = true
             pinView!.pinTintColor = .red
         } else {
             pinView!.annotation = annotation
@@ -76,19 +119,30 @@ extension MapViewController: MKMapViewDelegate {
     func mapView(_ mapView: MKMapView, didSelect view: MKAnnotationView) {
         let controller = self.storyboard!.instantiateViewController(withIdentifier: "PhotoAlbumViewController") as! PhotoAlbumViewController
         
-        // Save the coordinate in PhotoAlbumViewController to be used
-        PhotoAlbumViewController.coordinate = view.annotation?.coordinate
+        // Save the Pin in PhotoAlbumViewController to be used
+        PhotoAlbumViewController.selectedPin = findPersistedPin((view.annotation?.coordinate)!)
         
-        // Get the photos for the coordinate
-        FlickrClient.sharedInstance().getPhotos() { (photoURLArray, error) in
-            if let error = error {
-                print (error)
-            } else {
-                FlickrClient.sharedInstance().photoURLArray = photoURLArray as! [URL]
+        self.navigationController?.pushViewController(controller, animated: true)
+    }
+    
+    // MARK: Helpers
+    
+    func findPersistedPin(_ coordinate: CLLocationCoordinate2D) -> Pin? {
+        let selectedPinLatitude = coordinate.latitude
+        let selectedPinLongitude = coordinate.longitude
+        
+        // Loop through all fetched results to find the matching pin
+        for fetchedObject in self.fetchedResultsController.fetchedObjects! {
+            let pin = fetchedObject as! Pin
+            let pinLatitude = pin.latitude
+            let pinLongitude = pin.longitude
+            
+            if selectedPinLatitude == pinLatitude && selectedPinLongitude == pinLongitude {
+                return pin
             }
         }
         
-        self.navigationController?.pushViewController(controller, animated: true)
+        return nil
     }
 }
 

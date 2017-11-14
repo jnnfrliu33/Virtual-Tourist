@@ -70,6 +70,14 @@ struct CoreDataStack {
     func addStoreCoordinator(_ storeType: String, configuration: String?, storeURL: URL, options : [NSObject:AnyObject]?) throws {
         try coordinator.addPersistentStore(ofType: NSSQLiteStoreType, configurationName: nil, at: databaseURL, options: nil)
     }
+    
+    // Singleton
+    static func sharedInstance() -> CoreDataStack {
+        struct Singleton {
+            static var sharedInstance = CoreDataStack(modelName: "Model")
+        }
+        return Singleton.sharedInstance!
+    }
 }
 
 // MARK: - CoreDataStack (Removing Data)
@@ -77,7 +85,7 @@ struct CoreDataStack {
 internal extension CoreDataStack  {
     
     func dropAllData() throws {
-        // Delete all the objects in the database.
+        // Delete all the objects in the database
         try coordinator.destroyPersistentStore(at: databaseURL, ofType:NSSQLiteStoreType , options: nil)
         try addStoreCoordinator(NSSQLiteStoreType, configuration: nil, storeURL: databaseURL, options: nil)
     }
@@ -90,25 +98,6 @@ extension CoreDataStack {
     func saveContext() throws {
         if context.hasChanges {
             try context.save()
-        }
-    }
-    
-    func autoSave(_ delayInSeconds : Int) {
-        
-        if delayInSeconds > 0 {
-            do {
-                try saveContext()
-                print("Autosaving")
-            } catch {
-                print("Error while autosaving")
-            }
-            
-            let delayInNanoSeconds = UInt64(delayInSeconds) * NSEC_PER_SEC
-            let time = DispatchTime.now() + Double(Int64(delayInNanoSeconds)) / Double(NSEC_PER_SEC)
-            
-            DispatchQueue.main.asyncAfter(deadline: time) {
-                self.autoSave(delayInSeconds)
-            }
         }
     }
 }
