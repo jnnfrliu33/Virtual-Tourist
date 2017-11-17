@@ -83,8 +83,6 @@ class MapViewController: UIViewController, NSFetchedResultsControllerDelegate {
             } catch {
                 print ("Unable to save context!")
             }
-            
-            print (fetchedResultsController.fetchedObjects!)
 
             // Set the annotation on the map
             let annotation = MKPointAnnotation()
@@ -128,10 +126,18 @@ extension MapViewController: MKMapViewDelegate {
     // MARK: Helpers
     
     func findPersistedPin(_ coordinate: CLLocationCoordinate2D) -> Pin? {
+        
+        // Fetch newly added pins
+        do {
+            try self.fetchedResultsController.performFetch()
+        } catch {
+            print ("Unable to fetch pins!")
+        }
+        
         let selectedPinLatitude = coordinate.latitude
         let selectedPinLongitude = coordinate.longitude
         
-        // Loop through all fetched results to find the matching pin
+        // Loop through all fetched results to find the persisted pin
         for fetchedObject in self.fetchedResultsController.fetchedObjects! {
             let pin = fetchedObject as! Pin
             let pinLatitude = pin.latitude
@@ -141,7 +147,6 @@ extension MapViewController: MKMapViewDelegate {
                 return pin
             }
         }
-        
         return nil
     }
 }
