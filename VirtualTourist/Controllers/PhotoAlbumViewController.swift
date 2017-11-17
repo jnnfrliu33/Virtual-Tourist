@@ -54,16 +54,16 @@ class PhotoAlbumViewController: UIViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
         
+        // Zoom in the map on the location
+        centerMapOnLocation((PhotoAlbumViewController.selectedPin?.coordinate)!)
+        
+        // Set the annotation on the map
+        let annotation = MKPointAnnotation()
+        annotation.coordinate = (PhotoAlbumViewController.selectedPin?.coordinate)!
+        self.mapView.addAnnotation(annotation)
+        
         // Check if the selected pin contains persisted photos
-        if PhotoAlbumViewController.selectedPin?.photos?.count == 0 {
-            
-            // Zoom in the map on the location
-            centerMapOnLocation((PhotoAlbumViewController.selectedPin?.coordinate)!)
-            
-            // Set the annotation on the map
-            let annotation = MKPointAnnotation()
-            annotation.coordinate = (PhotoAlbumViewController.selectedPin?.coordinate)!
-            self.mapView.addAnnotation(annotation)
+        if PhotoAlbumViewController.selectedPin?.photos?.count != 0 {
             
             // Fetch persisted photos
             do {
@@ -93,8 +93,6 @@ class PhotoAlbumViewController: UIViewController {
                 }
             }
         }
-        
-        
     }
     
     // MARK: Helpers
