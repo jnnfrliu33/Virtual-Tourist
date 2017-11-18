@@ -150,6 +150,11 @@ extension PhotoAlbumViewController: UICollectionViewDelegate, UICollectionViewDa
     func collectionView(_ collectionView: UICollectionView, cellForItemAt indexPath: IndexPath) -> UICollectionViewCell {
         
         let cell = collectionView.dequeueReusableCell(withReuseIdentifier: "PhotoAlbumCollectionViewCell", for: indexPath) as! PhotoAlbumCollectionViewCell
+        
+        // Set placeholder image and activity indicator
+        cell.imageView.image = UIImage(named: "ImagePlaceholder")
+        cell.activityIndicator.startAnimating()
+        
         let image = self.fetchedResultsController.object(at: indexPath) as! Photo
         let imageData = image.imageData
         
