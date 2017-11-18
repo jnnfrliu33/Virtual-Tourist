@@ -25,6 +25,11 @@ class PhotoAlbumViewController: UIViewController {
     
     static var selectedPin: Pin? = nil
     
+    // To keep track of selections, deletions and updates
+    var selectedIndexPaths: [NSIndexPath]!
+    var deletedIndexPaths: [NSIndexPath]!
+    var updatedIndexPaths: [NSIndexPath]!
+    
     // Shared context
     lazy var sharedContext: NSManagedObjectContext = {
         return CoreDataStack.sharedInstance().context
@@ -192,40 +197,40 @@ extension PhotoAlbumViewController: UICollectionViewDelegate, UICollectionViewDa
 
 extension PhotoAlbumViewController: NSFetchedResultsControllerDelegate {
     
-//    func controllerWillChangeContent(_ controller: NSFetchedResultsController<NSFetchRequestResult>) {
-//        // collectionView.beginUpdates()
-//    }
-//
-//    func controller(_ controller: NSFetchedResultsController<NSFetchRequestResult>, didChange sectionInfo: NSFetchedResultsSectionInfo, atSectionIndex sectionIndex: Int, for type: NSFetchedResultsChangeType) {
-//
-//        let set = IndexSet(integer: sectionIndex)
-//
-//        switch (type) {
-//        case .insert:
-//            collectionView.insertSections(set)
-//        case .delete:
-//            collectionView.deleteSections(set)
-//        default:
-//            break
-//        }
-//    }
-//
-//    func controller(_ controller: NSFetchedResultsController<NSFetchRequestResult>, didChange anObject: Any, at indexPath: IndexPath?, for type: NSFetchedResultsChangeType, newIndexPath: IndexPath?) {
-//
-//        switch (type) {
-//        case .insert:
-//            collectionView.insertItems(at: [newIndexPath!])
-//        case .delete:
-//            collectionView.deleteItems(at: [indexPath!])
-//        case .update:
-//            collectionView.reloadItems(at: [indexPath!])
-//        case .move:
-//            collectionView.deleteItems(at: [indexPath!])
-//            collectionView.insertItems(at: [newIndexPath!])
-//        }
-//    }
-//
-//    func controllerDidChangeContent(_ controller: NSFetchedResultsController<NSFetchRequestResult>) {
-//        // collectionView.endUpdates()
-//    }
+    func controllerWillChangeContent(_ controller: NSFetchedResultsController<NSFetchRequestResult>) {
+        
+        // Create three fresh arrays when controller is about to make changes
+        self.selectedIndexPaths = [NSIndexPath]()
+        self.deletedIndexPaths = [NSIndexPath]()
+        self.updatedIndexPaths = [NSIndexPath]()
+        
+    }
+
+    func controller(_ controller: NSFetchedResultsController<NSFetchRequestResult>, didChange anObject: Any, at indexPath: IndexPath?, for type: NSFetchedResultsChangeType, newIndexPath: IndexPath?) {
+
+        switch type {
+        case .delete:
+            self.deletedIndexPaths.append(indexPath! as NSIndexPath)
+        case .update:
+            self.updatedIndexPaths.append(indexPath! as NSIndexPath)
+        default:
+            break
+        }
+    }
+
+    func controllerDidChangeContent(_ controller: NSFetchedResultsController<NSFetchRequestResult>) {
+        
+        // Perform batch updates
+        self.collectionView.performBatchUpdates({() -> Void in
+            
+            for indexPath in self.deletedIndexPaths {
+                self.collectionView.deleteItems(at: [indexPath as IndexPath])
+            }
+            
+            for indexPath in self.updatedIndexPaths {
+                self.collectionView.reloadItems(at: [indexPath as IndexPath])
+            }
+            
+        }, completion: nil)
+    }
 }
