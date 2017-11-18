@@ -128,7 +128,7 @@ class PhotoAlbumViewController: UIViewController {
     func getPhotos() {
         FlickrClient.sharedInstance().getPhotos() { (photosArray, error) in
             if let error = error {
-                print (error)
+                AlertViewController.showAlert(controller: self, message: error.localizedDescription)
             } else {
                 if let photosArray = photosArray as? [[String:AnyObject]] {
                     
