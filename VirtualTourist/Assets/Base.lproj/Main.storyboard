@@ -125,7 +125,11 @@
                                         <rect key="frame" x="0.0" y="592" width="375" height="55"/>
                                         <items>
                                             <barButtonItem style="plain" systemItem="flexibleSpace" id="Ryi-Ta-93c"/>
-                                            <barButtonItem title="Refresh Collection" id="wU6-2N-a4I"/>
+                                            <barButtonItem title="Bottom Button" id="wU6-2N-a4I" userLabel="Bottom Button">
+                                                <connections>
+                                                    <action selector="bottomButtonClicked:" destination="30F-Os-FpP" id="tGi-Uv-PR8"/>
+                                                </connections>
+                                            </barButtonItem>
                                             <barButtonItem style="plain" systemItem="flexibleSpace" id="DFx-cz-zNE"/>
                                         </items>
                                     </toolbar>
@@ -146,10 +150,10 @@
                         <viewLayoutGuide key="safeArea" id="CvQ-Pk-WjX"/>
                     </view>
                     <connections>
+                        <outlet property="bottomButton" destination="wU6-2N-a4I" id="zaD-og-lKQ"/>
                         <outlet property="collectionView" destination="N3J-Sy-Pde" id="p3M-sZ-8nc"/>
                         <outlet property="flowLayout" destination="3Ca-fl-jUC" id="nas-wY-hWv"/>
                         <outlet property="mapView" destination="Q6N-e5-Oof" id="Tpk-Td-kLM"/>
-                        <outlet property="refreshCollectionButton" destination="wU6-2N-a4I" id="2k7-yy-bzx"/>
                     </connections>
                 </viewController>
                 <placeholder placeholderIdentifier="IBFirstResponder" id="9AE-DB-LH8" userLabel="First Responder" sceneMemberID="firstResponder"/>

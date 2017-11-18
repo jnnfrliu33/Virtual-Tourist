@@ -17,7 +17,7 @@ class PhotoAlbumViewController: UIViewController {
     // MARK: Outlets
     
     @IBOutlet weak var mapView: MKMapView!
-    @IBOutlet weak var refreshCollectionButton: UIBarButtonItem!
+    @IBOutlet weak var bottomButton: UIBarButtonItem!
     @IBOutlet weak var collectionView: UICollectionView!
     @IBOutlet weak var flowLayout: UICollectionViewFlowLayout!
     
@@ -26,9 +26,9 @@ class PhotoAlbumViewController: UIViewController {
     static var selectedPin: Pin? = nil
     
     // To keep track of selections, deletions and updates
-    var selectedIndexPaths: [NSIndexPath]!
-    var deletedIndexPaths: [NSIndexPath]!
-    var updatedIndexPaths: [NSIndexPath]!
+    var selectedIndexPaths = [IndexPath]()
+    var deletedIndexPaths: [IndexPath]!
+    var updatedIndexPaths: [IndexPath]!
     
     // Shared context
     lazy var sharedContext: NSManagedObjectContext = {
@@ -68,8 +68,8 @@ class PhotoAlbumViewController: UIViewController {
         annotation.coordinate = (PhotoAlbumViewController.selectedPin?.coordinate)!
         self.mapView.addAnnotation(annotation)
         
-        // Set collection flow layout
         setCollectionFlowLayout()
+        configureBottomButton()
         
         // Check if the selected pin contains persisted photos
         if PhotoAlbumViewController.selectedPin?.photos?.count != 0 {
@@ -84,31 +84,7 @@ class PhotoAlbumViewController: UIViewController {
         } else {
             
             // Download and save photos from Flickr if selected pin has no persisted photos
-            FlickrClient.sharedInstance().getPhotos() { (photosArray, error) in
-                if let error = error {
-                    print (error)
-                } else {
-                    if let photosArray = photosArray as? [[String:AnyObject]] {
-                        
-                        // Loop through photosArray and create Photo object for each photo dictionary
-                        for photo in photosArray {
-                            
-                            if let imageURLString = photo[FlickrClient.FlickrResponseKeys.MediumURL] as? String {
-                                let imageData = try? Data(contentsOf: URL(string: imageURLString)!)
-                                let photoObject = Photo(imageData: imageData! as NSData, context: self.sharedContext)
-                                photoObject.pin = PhotoAlbumViewController.selectedPin
-                            }
-                        }
-                    }
-                    
-                    // Fetch newly added photos
-                    do {
-                        try self.fetchedResultsController.performFetch()
-                    } catch {
-                        print ("Unable to fetch photos!")
-                    }
-                }
-            }
+            getPhotos()
         }
     }
     
@@ -118,6 +94,16 @@ class PhotoAlbumViewController: UIViewController {
         // Set collection flow layout when device orientation changes
         coordinator.animate(alongsideTransition: nil) { _ in
             self.setCollectionFlowLayout()
+        }
+    }
+    
+    // MARK: Actions
+    
+    @IBAction func bottomButtonClicked(_ sender: Any) {
+        if selectedIndexPaths.isEmpty {
+            refreshPhotos()
+        } else {
+            deletedSelectedPhotos()
         }
     }
     
@@ -137,6 +123,68 @@ class PhotoAlbumViewController: UIViewController {
         flowLayout.minimumInteritemSpacing = space
         flowLayout.minimumLineSpacing = space
         flowLayout.itemSize = CGSize(width: dimension, height: dimension)
+    }
+    
+    func getPhotos() {
+        FlickrClient.sharedInstance().getPhotos() { (photosArray, error) in
+            if let error = error {
+                print (error)
+            } else {
+                if let photosArray = photosArray as? [[String:AnyObject]] {
+                    
+                    // Loop through photosArray and create Photo object for each photo dictionary
+                    for photo in photosArray {
+                        
+                        if let imageURLString = photo[FlickrClient.FlickrResponseKeys.MediumURL] as? String {
+                            let imageData = try? Data(contentsOf: URL(string: imageURLString)!)
+                            let photoObject = Photo(imageData: imageData! as NSData, context: self.sharedContext)
+                            photoObject.pin = PhotoAlbumViewController.selectedPin
+                        }
+                    }
+                }
+                
+                // Fetch newly added photos
+                do {
+                    try self.fetchedResultsController.performFetch()
+                    print (self.fetchedResultsController.fetchedObjects!)
+                } catch {
+                    print ("Unable to fetch photos!")
+                }
+            }
+        }
+    }
+    
+    func configureBottomButton() {
+        if selectedIndexPaths.isEmpty {
+            bottomButton.title = "Refresh Photos"
+        } else {
+            bottomButton.title = "Delete Selected Photos"
+        }
+    }
+    
+    func refreshPhotos() {
+        
+        // Delete current set of photos
+        for photo in self.fetchedResultsController.fetchedObjects as! [Photo] {
+            self.sharedContext.delete(photo)
+        }
+        
+        // Get new set of photos
+        getPhotos()
+    }
+    
+    func deletedSelectedPhotos() {
+        var photosToDelete = [Photo]()
+        
+        for indexPath in selectedIndexPaths {
+            photosToDelete.append(self.fetchedResultsController.object(at: indexPath) as! Photo)
+        }
+        
+        for photo in photosToDelete {
+            self.sharedContext.delete(photo)
+        }
+        
+        selectedIndexPaths = [IndexPath]()
     }
 }
 
@@ -175,7 +223,6 @@ extension PhotoAlbumViewController: UICollectionViewDelegate, UICollectionViewDa
     }
     
     func collectionView(_ collectionView: UICollectionView, cellForItemAt indexPath: IndexPath) -> UICollectionViewCell {
-        
         let cell = collectionView.dequeueReusableCell(withReuseIdentifier: "PhotoAlbumCollectionViewCell", for: indexPath) as! PhotoAlbumCollectionViewCell
         
         // Set placeholder image and activity indicator
@@ -191,6 +238,21 @@ extension PhotoAlbumViewController: UICollectionViewDelegate, UICollectionViewDa
         
         return cell
     }
+    
+    func collectionView(_ collectionView: UICollectionView, didSelectItemAt indexPath: IndexPath) {
+        let cell = collectionView.cellForItem(at: indexPath) as! PhotoAlbumCollectionViewCell
+        
+        // Toggle its presence in selectedIndexPaths whenever a cell is tapped
+        if let index = selectedIndexPaths.index(of: indexPath) {
+            cell.imageView.alpha = 1.0
+            selectedIndexPaths.remove(at: index)
+        } else {
+            cell.imageView.alpha = 0.5
+            selectedIndexPaths.append(indexPath)
+        }
+        
+        configureBottomButton()
+    }
 }
 
 // MARK: - PhotoAlbumViewController: NSFetchedResultsControllerDelegate
@@ -198,39 +260,38 @@ extension PhotoAlbumViewController: UICollectionViewDelegate, UICollectionViewDa
 extension PhotoAlbumViewController: NSFetchedResultsControllerDelegate {
     
     func controllerWillChangeContent(_ controller: NSFetchedResultsController<NSFetchRequestResult>) {
-        
-        // Create three fresh arrays when controller is about to make changes
-        self.selectedIndexPaths = [NSIndexPath]()
-        self.deletedIndexPaths = [NSIndexPath]()
-        self.updatedIndexPaths = [NSIndexPath]()
-        
+
+        // Create fresh arrays when controller is about to make changes
+        self.deletedIndexPaths = [IndexPath]()
+        self.updatedIndexPaths = [IndexPath]()
+
     }
 
     func controller(_ controller: NSFetchedResultsController<NSFetchRequestResult>, didChange anObject: Any, at indexPath: IndexPath?, for type: NSFetchedResultsChangeType, newIndexPath: IndexPath?) {
 
         switch type {
         case .delete:
-            self.deletedIndexPaths.append(indexPath! as NSIndexPath)
+            self.deletedIndexPaths.append(indexPath!)
         case .update:
-            self.updatedIndexPaths.append(indexPath! as NSIndexPath)
+            self.updatedIndexPaths.append(indexPath!)
         default:
             break
         }
     }
 
     func controllerDidChangeContent(_ controller: NSFetchedResultsController<NSFetchRequestResult>) {
-        
+
         // Perform batch updates
-        self.collectionView.performBatchUpdates({() -> Void in
-            
+        self.collectionView.performBatchUpdates({ () -> Void in
+
             for indexPath in self.deletedIndexPaths {
-                self.collectionView.deleteItems(at: [indexPath as IndexPath])
+                self.collectionView.deleteItems(at: [indexPath])
             }
-            
+
             for indexPath in self.updatedIndexPaths {
-                self.collectionView.reloadItems(at: [indexPath as IndexPath])
+                self.collectionView.reloadItems(at: [indexPath])
             }
-            
+
         }, completion: nil)
     }
 }
