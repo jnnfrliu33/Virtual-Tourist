@@ -19,6 +19,7 @@ class PhotoAlbumViewController: UIViewController {
     @IBOutlet weak var mapView: MKMapView!
     @IBOutlet weak var refreshCollectionButton: UIBarButtonItem!
     @IBOutlet weak var collectionView: UICollectionView!
+    @IBOutlet weak var flowLayout: UICollectionViewFlowLayout!
     
     // MARK: Properties
     
@@ -62,6 +63,9 @@ class PhotoAlbumViewController: UIViewController {
         annotation.coordinate = (PhotoAlbumViewController.selectedPin?.coordinate)!
         self.mapView.addAnnotation(annotation)
         
+        // Set collection flow layout
+        setCollectionFlowLayout(forPortrait: UIDevice.current.orientation.isPortrait)
+        
         // Check if the selected pin contains persisted photos
         if PhotoAlbumViewController.selectedPin?.photos?.count != 0 {
             
@@ -103,6 +107,15 @@ class PhotoAlbumViewController: UIViewController {
         }
     }
     
+    override func viewWillTransition(to size: CGSize, with coordinator: UIViewControllerTransitionCoordinator) {
+        super.viewWillTransition(to: size, with: coordinator)
+
+        // Set collection flow layout when device orientation changes
+        coordinator.animate(alongsideTransition: nil) { _ in
+            self.setCollectionFlowLayout(forPortrait: UIDevice.current.orientation.isPortrait)
+        }
+    }
+    
     // MARK: Helpers
     
     // Define zoom radius of location
@@ -110,6 +123,25 @@ class PhotoAlbumViewController: UIViewController {
     func centerMapOnLocation (_ coordinate: CLLocationCoordinate2D) {
         let coordinateRegion = MKCoordinateRegionMakeWithDistance(coordinate, regionRadius * 2.0, regionRadius * 2.0)
         self.mapView.setRegion(coordinateRegion, animated: true)
+    }
+    
+    func setCollectionFlowLayout(forPortrait: Bool) {
+        let space: CGFloat = 3.0
+        var dimension: CGFloat {
+            get {
+                if forPortrait {
+                    // Keeps column spacing uniform if device is in portrait orientation
+                    return (view.frame.size.width - (2 * space)) / 3.0
+                } else {
+                    // Keeps column spacing uniform if device is in landscape orientation
+                    return (view.frame.size.width - (4 * space)) / 5.0
+                }
+            }
+        }
+        
+        flowLayout.minimumInteritemSpacing = space
+        flowLayout.minimumLineSpacing = space
+        flowLayout.itemSize = CGSize(width: dimension, height: dimension)
     }
 }
 
