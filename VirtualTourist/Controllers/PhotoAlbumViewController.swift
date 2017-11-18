@@ -85,10 +85,18 @@ class PhotoAlbumViewController: UIViewController {
                         for photo in photosArray {
                             
                             if let imageURLString = photo[FlickrClient.FlickrResponseKeys.MediumURL] as? String {
-                                let photoObject = Photo(imageURLString: imageURLString, context: self.sharedContext)
+                                let imageData = try? Data(contentsOf: URL(string: imageURLString)!)
+                                let photoObject = Photo(imageData: imageData! as NSData, context: self.sharedContext)
                                 photoObject.pin = PhotoAlbumViewController.selectedPin
                             }
                         }
+                    }
+                    
+                    // Fetch newly added photos
+                    do {
+                        try self.fetchedResultsController.performFetch()
+                    } catch {
+                        print ("Unable to fetch photos!")
                     }
                 }
             }
@@ -143,11 +151,10 @@ extension PhotoAlbumViewController: UICollectionViewDelegate, UICollectionViewDa
         
         let cell = collectionView.dequeueReusableCell(withReuseIdentifier: "PhotoAlbumCollectionViewCell", for: indexPath) as! PhotoAlbumCollectionViewCell
         let image = self.fetchedResultsController.object(at: indexPath) as! Photo
-        let imageURLString = image.imageURLString
+        let imageData = image.imageData
         
-        // Set the image from the imageURLString
-        let imageData = try? Data(contentsOf: URL(string: imageURLString!)!)
-        cell.imageView.image = UIImage(data: imageData!)
+        // Set the image from the imageData
+        cell.imageView.image = UIImage(data: imageData as Data)
         
         return cell
     }
