@@ -64,7 +64,7 @@ class PhotoAlbumViewController: UIViewController {
         self.mapView.addAnnotation(annotation)
         
         // Set collection flow layout
-        setCollectionFlowLayout(forPortrait: UIDevice.current.orientation.isPortrait)
+        setCollectionFlowLayout()
         
         // Check if the selected pin contains persisted photos
         if PhotoAlbumViewController.selectedPin?.photos?.count != 0 {
@@ -112,7 +112,7 @@ class PhotoAlbumViewController: UIViewController {
 
         // Set collection flow layout when device orientation changes
         coordinator.animate(alongsideTransition: nil) { _ in
-            self.setCollectionFlowLayout(forPortrait: UIDevice.current.orientation.isPortrait)
+            self.setCollectionFlowLayout()
         }
     }
     
@@ -125,19 +125,9 @@ class PhotoAlbumViewController: UIViewController {
         self.mapView.setRegion(coordinateRegion, animated: true)
     }
     
-    func setCollectionFlowLayout(forPortrait: Bool) {
+    func setCollectionFlowLayout() {
         let space: CGFloat = 3.0
-        var dimension: CGFloat {
-            get {
-                if forPortrait {
-                    // Keeps column spacing uniform if device is in portrait orientation
-                    return (view.frame.size.width - (2 * space)) / 3.0
-                } else {
-                    // Keeps column spacing uniform if device is in landscape orientation
-                    return (view.frame.size.width - (4 * space)) / 5.0
-                }
-            }
-        }
+        let dimension = (view.frame.size.width - (2 * space)) / 3.0
         
         flowLayout.minimumInteritemSpacing = space
         flowLayout.minimumLineSpacing = space
