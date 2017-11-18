@@ -97,13 +97,21 @@
                                                     <rect key="frame" x="0.0" y="0.0" width="100" height="100"/>
                                                     <autoresizingMask key="autoresizingMask"/>
                                                     <subviews>
-                                                        <imageView userInteractionEnabled="NO" contentMode="scaleToFill" horizontalHuggingPriority="251" verticalHuggingPriority="251" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="3F5-uJ-riB">
+                                                        <imageView userInteractionEnabled="NO" contentMode="scaleToFill" horizontalHuggingPriority="251" verticalHuggingPriority="251" fixedFrame="YES" image="ImagePlaceholder" translatesAutoresizingMaskIntoConstraints="NO" id="3F5-uJ-riB">
                                                             <rect key="frame" x="0.0" y="0.0" width="100" height="100"/>
                                                             <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
                                                         </imageView>
+                                                        <activityIndicatorView opaque="NO" contentMode="scaleToFill" horizontalHuggingPriority="750" verticalHuggingPriority="750" hidesWhenStopped="YES" animating="YES" style="gray" translatesAutoresizingMaskIntoConstraints="NO" id="KLF-9S-Xar">
+                                                            <rect key="frame" x="40" y="40" width="20" height="20"/>
+                                                        </activityIndicatorView>
                                                     </subviews>
                                                 </view>
+                                                <constraints>
+                                                    <constraint firstItem="KLF-9S-Xar" firstAttribute="centerY" secondItem="gPL-Gm-Vew" secondAttribute="centerY" id="9Mf-RR-pnr"/>
+                                                    <constraint firstItem="KLF-9S-Xar" firstAttribute="centerX" secondItem="gPL-Gm-Vew" secondAttribute="centerX" id="Oji-yG-djH"/>
+                                                </constraints>
                                                 <connections>
+                                                    <outlet property="activityIndicator" destination="KLF-9S-Xar" id="dCk-uC-6ue"/>
                                                     <outlet property="imageView" destination="3F5-uJ-riB" id="irW-kh-aRe"/>
                                                 </connections>
                                             </collectionViewCell>
@@ -148,4 +156,7 @@
             <point key="canvasLocation" x="1186.4000000000001" y="184.85757121439281"/>
         </scene>
     </scenes>
+    <resources>
+        <image name="ImagePlaceholder" width="1200" height="1200"/>
+    </resources>
 </document>

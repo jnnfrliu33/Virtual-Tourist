@@ -29,21 +29,23 @@ extension FlickrClient {
     
     func getPhotos(_ methodParameters: [String:AnyObject] = methodParameters, completionHandlerForGetPhotos: @escaping (_ result: AnyObject?, _ error: NSError?) -> Void) {
         
-        let _ = taskForGETMethod(methodParameters) { (photosDictionary, error) in
-            
-            if let error = error {
-                completionHandlerForGetPhotos(nil, error)
-            } else {
-                if let totalPages = photosDictionary?[FlickrResponseKeys.Pages] as? Int, totalPages > 0 {
-                    
-                    // Pick a random page
-                    let pageLimit = min(totalPages, 40)
-                    let randomPage = Int(arc4random_uniform(UInt32(pageLimit))) + 1
-                    
-                    self.getPhotos(methodParameters, withPageNumber: randomPage, completionHandlerForGetPhotos: completionHandlerForGetPhotos)
-                    
+        DispatchQueue.global(qos: .background).async {
+            let _ = self.taskForGETMethod(methodParameters) { (photosDictionary, error) in
+                
+                if let error = error {
+                    completionHandlerForGetPhotos(nil, error)
                 } else {
-                    completionHandlerForGetPhotos(nil, NSError(domain: "getPhotos parsing", code: 0, userInfo: [NSLocalizedDescriptionKey: "Could not parse getPhotos"]))
+                    if let totalPages = photosDictionary?[FlickrResponseKeys.Pages] as? Int, totalPages > 0 {
+                        
+                        // Pick a random page
+                        let pageLimit = min(totalPages, 40)
+                        let randomPage = Int(arc4random_uniform(UInt32(pageLimit))) + 1
+                        
+                        self.getPhotos(methodParameters, withPageNumber: randomPage, completionHandlerForGetPhotos: completionHandlerForGetPhotos)
+                        
+                    } else {
+                        completionHandlerForGetPhotos(nil, NSError(domain: "getPhotos parsing", code: 0, userInfo: [NSLocalizedDescriptionKey: "Could not parse getPhotos"]))
+                    }
                 }
             }
         }
@@ -55,13 +57,15 @@ extension FlickrClient {
         var methodParametersWithPageNumber = methodParameters
         methodParametersWithPageNumber[FlickrParameterKeys.Page] = withPageNumber as AnyObject?
         
-        let _ = taskForGETMethod(methodParameters) { (photosDictionary, error) in
-            
-            if let error = error {
-                completionHandlerForGetPhotos(nil, error)
-            } else {
-                if let photosArray = photosDictionary?[FlickrResponseKeys.Photo] as? [[String: AnyObject]], photosArray.count > 0 {
-                    completionHandlerForGetPhotos(photosArray as AnyObject, nil)
+        DispatchQueue.global(qos: .background).async {
+            let _ = self.taskForGETMethod(methodParameters) { (photosDictionary, error) in
+                
+                if let error = error {
+                    completionHandlerForGetPhotos(nil, error)
+                } else {
+                    if let photosArray = photosDictionary?[FlickrResponseKeys.Photo] as? [[String: AnyObject]], photosArray.count > 0 {
+                        completionHandlerForGetPhotos(photosArray as AnyObject, nil)
+                    }
                 }
             }
         }

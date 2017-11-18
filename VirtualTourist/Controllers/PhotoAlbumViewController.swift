@@ -153,8 +153,9 @@ extension PhotoAlbumViewController: UICollectionViewDelegate, UICollectionViewDa
         let image = self.fetchedResultsController.object(at: indexPath) as! Photo
         let imageData = image.imageData
         
-        // Set the image from the imageData
+        // Set the image from the imageData and stop the activity indicator animation
         cell.imageView.image = UIImage(data: imageData as Data)
+        cell.activityIndicator.stopAnimating()
         
         return cell
     }
@@ -164,40 +165,40 @@ extension PhotoAlbumViewController: UICollectionViewDelegate, UICollectionViewDa
 
 extension PhotoAlbumViewController: NSFetchedResultsControllerDelegate {
     
-    func controllerWillChangeContent(_ controller: NSFetchedResultsController<NSFetchRequestResult>) {
-        // collectionView.beginUpdates()
-    }
-    
-    func controller(_ controller: NSFetchedResultsController<NSFetchRequestResult>, didChange sectionInfo: NSFetchedResultsSectionInfo, atSectionIndex sectionIndex: Int, for type: NSFetchedResultsChangeType) {
-        
-        let set = IndexSet(integer: sectionIndex)
-        
-        switch (type) {
-        case .insert:
-            collectionView.insertSections(set)
-        case .delete:
-            collectionView.deleteSections(set)
-        default:
-            break
-        }
-    }
-    
-    func controller(_ controller: NSFetchedResultsController<NSFetchRequestResult>, didChange anObject: Any, at indexPath: IndexPath?, for type: NSFetchedResultsChangeType, newIndexPath: IndexPath?) {
-        
-        switch (type) {
-        case .insert:
-            collectionView.insertItems(at: [newIndexPath!])
-        case .delete:
-            collectionView.deleteItems(at: [indexPath!])
-        case .update:
-            collectionView.reloadItems(at: [indexPath!])
-        case .move:
-            collectionView.deleteItems(at: [indexPath!])
-            collectionView.insertItems(at: [newIndexPath!])
-        }
-    }
-    
-    func controllerDidChangeContent(_ controller: NSFetchedResultsController<NSFetchRequestResult>) {
-        // collectionView.endUpdates()
-    }
+//    func controllerWillChangeContent(_ controller: NSFetchedResultsController<NSFetchRequestResult>) {
+//        // collectionView.beginUpdates()
+//    }
+//
+//    func controller(_ controller: NSFetchedResultsController<NSFetchRequestResult>, didChange sectionInfo: NSFetchedResultsSectionInfo, atSectionIndex sectionIndex: Int, for type: NSFetchedResultsChangeType) {
+//
+//        let set = IndexSet(integer: sectionIndex)
+//
+//        switch (type) {
+//        case .insert:
+//            collectionView.insertSections(set)
+//        case .delete:
+//            collectionView.deleteSections(set)
+//        default:
+//            break
+//        }
+//    }
+//
+//    func controller(_ controller: NSFetchedResultsController<NSFetchRequestResult>, didChange anObject: Any, at indexPath: IndexPath?, for type: NSFetchedResultsChangeType, newIndexPath: IndexPath?) {
+//
+//        switch (type) {
+//        case .insert:
+//            collectionView.insertItems(at: [newIndexPath!])
+//        case .delete:
+//            collectionView.deleteItems(at: [indexPath!])
+//        case .update:
+//            collectionView.reloadItems(at: [indexPath!])
+//        case .move:
+//            collectionView.deleteItems(at: [indexPath!])
+//            collectionView.insertItems(at: [newIndexPath!])
+//        }
+//    }
+//
+//    func controllerDidChangeContent(_ controller: NSFetchedResultsController<NSFetchRequestResult>) {
+//        // collectionView.endUpdates()
+//    }
 }
