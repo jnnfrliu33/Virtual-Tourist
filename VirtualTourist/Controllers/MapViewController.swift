@@ -17,7 +17,7 @@ class MapViewController: UIViewController, NSFetchedResultsControllerDelegate {
     // MARK: Outlets
     
     @IBOutlet weak var mapView: MKMapView!
-    @IBOutlet weak var editButton: UIBarButtonItem!
+    @IBOutlet weak var deletePinsLabel: UILabel!
     
     // MARK: Properties
     
@@ -61,6 +61,9 @@ class MapViewController: UIViewController, NSFetchedResultsControllerDelegate {
         
         // Add annotations from fetchedResultsController
         self.mapView.addAnnotations(self.fetchedResultsController.fetchedObjects as! [Pin] as [MKAnnotation])
+        
+        // Set edit button in navigation bar
+        self.navigationItem.rightBarButtonItem = self.editButtonItem
     }
     
     // MARK: Functions
@@ -90,6 +93,25 @@ class MapViewController: UIViewController, NSFetchedResultsControllerDelegate {
             self.mapView.addAnnotation(annotation)
         }
     }
+    
+    override func setEditing(_ editing: Bool, animated: Bool) {
+        super.setEditing(editing, animated: animated)
+        
+        if editing {
+            
+            // Push up mapView to reveal bottom toolbar
+            UIView.animate(withDuration: 0.2, animations: {
+                self.mapView.frame.origin.y -= self.deletePinsLabel.frame.height
+            })
+            
+        } else {
+            
+            // Hide bottom toolbar
+            UIView.animate(withDuration: 0.2, animations: {
+                self.mapView.frame.origin.y += self.deletePinsLabel.frame.height
+            })
+        }
+    }
 }
 
 // MARK: - MapViewController: MKMapViewDelegate
@@ -115,12 +137,26 @@ extension MapViewController: MKMapViewDelegate {
     }
     
     func mapView(_ mapView: MKMapView, didSelect view: MKAnnotationView) {
-        let controller = self.storyboard!.instantiateViewController(withIdentifier: "PhotoAlbumViewController") as! PhotoAlbumViewController
         
-        // Save the Pin in PhotoAlbumViewController to be used
-        PhotoAlbumViewController.selectedPin = findPersistedPin((view.annotation?.coordinate)!)
-        
-        self.navigationController?.pushViewController(controller, animated: true)
+        if isEditing {
+            self.sharedContext.delete(findPersistedPin((view.annotation?.coordinate)!)!)
+            self.mapView.removeAnnotation(view.annotation!)
+            
+            // Save context
+            do {
+                try CoreDataStack.sharedInstance().saveContext()
+            } catch {
+                print ("Unable to save context!")
+            }
+            
+        } else {
+            let controller = self.storyboard!.instantiateViewController(withIdentifier: "PhotoAlbumViewController") as! PhotoAlbumViewController
+            
+            // Save the Pin in PhotoAlbumViewController to be used
+            PhotoAlbumViewController.selectedPin = findPersistedPin((view.annotation?.coordinate)!)
+            
+            self.navigationController?.pushViewController(controller, animated: true)
+        }
     }
     
     // MARK: Helpers
@@ -150,5 +186,3 @@ extension MapViewController: MKMapViewDelegate {
         return nil
     }
 }
-
-
