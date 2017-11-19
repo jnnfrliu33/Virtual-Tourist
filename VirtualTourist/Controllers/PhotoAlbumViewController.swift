@@ -24,6 +24,7 @@ class PhotoAlbumViewController: UIViewController {
     // MARK: Properties
     
     static var selectedPin: Pin? = nil
+    var imageURLArray = [String]()
     
     // To keep track of selections, deletions and updates
     var selectedIndexPaths = [IndexPath]()
@@ -51,11 +52,6 @@ class PhotoAlbumViewController: UIViewController {
     }()
     
     // MARK: Life Cycle
-    
-    override func viewWillAppear(_ animated: Bool) {
-        super.viewWillAppear(animated)
-        collectionView.reloadData()
-    }
 
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -82,8 +78,7 @@ class PhotoAlbumViewController: UIViewController {
             }
             
         } else {
-            
-            // Download and save photos from Flickr if selected pin has no persisted photos
+            // Get photos from Flickr if selected pin has no persisted photos
             getPhotos()
         }
     }
@@ -126,30 +121,17 @@ class PhotoAlbumViewController: UIViewController {
     }
     
     func getPhotos() {
-        FlickrClient.sharedInstance().getPhotos() { (photosArray, error) in
+        FlickrClient.sharedInstance().getPhotos() { (imageURLArray, error) in
             if let error = error {
                 AlertViewController.showAlert(controller: self, message: error.localizedDescription)
             } else {
-                if let photosArray = photosArray as? [[String:AnyObject]] {
-                    
-                    // Loop through photosArray and create Photo object for each photo dictionary
-                    for photo in photosArray {
-                        
-                        if let imageURLString = photo[FlickrClient.FlickrResponseKeys.MediumURL] as? String {
-                            let imageData = try? Data(contentsOf: URL(string: imageURLString)!)
-                            let photoObject = Photo(imageData: imageData! as NSData, context: self.sharedContext)
-                            photoObject.pin = PhotoAlbumViewController.selectedPin
-                        }
-                    }
+                if let imageURLArray = imageURLArray as? [String] {
+                    self.imageURLArray = imageURLArray
                 }
-                
-                // Fetch newly added photos
-                do {
-                    try self.fetchedResultsController.performFetch()
-                    print (self.fetchedResultsController.fetchedObjects!)
-                } catch {
-                    print ("Unable to fetch photos!")
+                performUIUpdatesOnMain {
+                    self.collectionView.reloadData()
                 }
+                print (self.imageURLArray)
             }
         }
     }
@@ -219,7 +201,12 @@ extension PhotoAlbumViewController: UICollectionViewDelegate, UICollectionViewDa
     }
     
     func collectionView(_ collectionView: UICollectionView, numberOfItemsInSection section: Int) -> Int {
-        return self.fetchedResultsController.sections![section].numberOfObjects
+        
+        if self.fetchedResultsController.fetchedObjects?.count != 0 {
+            return self.fetchedResultsController.sections![section].numberOfObjects
+        } else {
+            return self.imageURLArray.count
+        }
     }
     
     func collectionView(_ collectionView: UICollectionView, cellForItemAt indexPath: IndexPath) -> UICollectionViewCell {
@@ -229,12 +216,29 @@ extension PhotoAlbumViewController: UICollectionViewDelegate, UICollectionViewDa
         cell.imageView.image = UIImage(named: "ImagePlaceholder")
         cell.activityIndicator.startAnimating()
         
-        let image = self.fetchedResultsController.object(at: indexPath) as! Photo
-        let imageData = image.imageData
-        
-        // Set the image from the imageData and stop the activity indicator animation
-        cell.imageView.image = UIImage(data: imageData as Data)
-        cell.activityIndicator.stopAnimating()
+        // Check if the selected pin contains persisted photos
+        if self.fetchedResultsController.fetchedObjects?.count != 0 {
+            let image = self.fetchedResultsController.object(at: indexPath) as! Photo
+            let imageData = image.imageData
+            
+            // Set the image from the imageData and stop the activity indicator animation
+            cell.imageView.image = UIImage(data: imageData as Data)
+            cell.activityIndicator.stopAnimating()
+            
+        } else {
+            
+            // Download image data if selected pin has no persisted photos
+            let imageURLString = imageURLArray[(indexPath as NSIndexPath).row]
+            let imageData = try? Data(contentsOf: URL(string: imageURLString)!)
+            
+            // Create Photo object
+            let photoObject = Photo(imageData: imageData! as NSData, context: self.sharedContext)
+            photoObject.pin = PhotoAlbumViewController.selectedPin
+            
+            // Set the image from the imageData and stop the activity indicator animation
+            cell.imageView.image = UIImage(data: imageData!)
+            cell.activityIndicator.stopAnimating()
+        }
         
         return cell
     }
