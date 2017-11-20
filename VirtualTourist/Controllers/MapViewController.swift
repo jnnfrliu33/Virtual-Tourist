@@ -155,6 +155,8 @@ extension MapViewController: MKMapViewDelegate {
             // Save the Pin in PhotoAlbumViewController to be used
             PhotoAlbumViewController.selectedPin = findPersistedPin((view.annotation?.coordinate)!)
             
+            print (PhotoAlbumViewController.selectedPin!)
+            
             self.navigationController?.pushViewController(controller, animated: true)
         }
     }

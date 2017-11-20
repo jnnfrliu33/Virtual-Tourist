@@ -24,12 +24,12 @@ class PhotoAlbumViewController: UIViewController {
     // MARK: Properties
     
     static var selectedPin: Pin? = nil
-    var imageURLArray = [String]()
+    static var imageURLArray = [String]()
     
     // To keep track of selections, deletions and updates
     var selectedIndexPaths = [IndexPath]()
     var deletedIndexPaths: [IndexPath]!
-    var updatedIndexPaths: [IndexPath]!
+//    var updatedIndexPaths: [IndexPath]!
     
     // Shared context
     lazy var sharedContext: NSManagedObjectContext = {
@@ -56,6 +56,8 @@ class PhotoAlbumViewController: UIViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
         
+        print ("Initial array: \(PhotoAlbumViewController.imageURLArray)")
+        
         // Zoom in the map on the location
         centerMapOnLocation((PhotoAlbumViewController.selectedPin?.coordinate)!)
         
@@ -78,8 +80,10 @@ class PhotoAlbumViewController: UIViewController {
             }
             
         } else {
-            // Get photos from Flickr if selected pin has no persisted photos
-            getPhotos()
+            // Get image URLs from Flickr if selected pin has no persisted photos
+            getImageURLs()
+            
+            print("Filled array: \(PhotoAlbumViewController.imageURLArray)")
         }
     }
     
@@ -120,14 +124,17 @@ class PhotoAlbumViewController: UIViewController {
         flowLayout.itemSize = CGSize(width: dimension, height: dimension)
     }
     
-    func getPhotos() {
+    func getImageURLs() {
         FlickrClient.sharedInstance().getPhotos() { (imageURLArray, error) in
             if let error = error {
                 AlertViewController.showAlert(controller: self, message: error.localizedDescription)
             } else {
+                PhotoAlbumViewController.imageURLArray.removeAll()
+                
                 if let imageURLArray = imageURLArray as? [String] {
-                    self.imageURLArray = imageURLArray
+                    PhotoAlbumViewController.imageURLArray = imageURLArray
                 }
+                
                 performUIUpdatesOnMain {
                     self.collectionView.reloadData()
                 }
@@ -150,8 +157,8 @@ class PhotoAlbumViewController: UIViewController {
             self.sharedContext.delete(photo)
         }
         
-        // Get new set of photos
-        getPhotos()
+        // Get new set of image URLs
+        getImageURLs()
     }
     
     func deletedSelectedPhotos() {
@@ -163,6 +170,13 @@ class PhotoAlbumViewController: UIViewController {
         
         for photo in photosToDelete {
             self.sharedContext.delete(photo)
+        }
+        
+        // Save context
+        do {
+            try CoreDataStack.sharedInstance().saveContext()
+        } catch {
+            print ("Unable to save context!")
         }
         
         selectedIndexPaths = [IndexPath]()
@@ -195,17 +209,22 @@ extension PhotoAlbumViewController: MKMapViewDelegate {
 
 extension PhotoAlbumViewController: UICollectionViewDelegate, UICollectionViewDataSource {
     
-//    func numberOfSections(in collectionView: UICollectionView) -> Int {
-//        return self.fetchedResultsController.sections?.count ?? 0
-//    }
+    func numberOfSections(in collectionView: UICollectionView) -> Int {
+        
+        if self.fetchedResultsController.fetchedObjects?.count != nil {
+            return (self.fetchedResultsController.sections?.count)!
+        } else {
+            return 1
+        }
+    }
     
     func collectionView(_ collectionView: UICollectionView, numberOfItemsInSection section: Int) -> Int {
         
-//        if self.fetchedResultsController.fetchedObjects?.count != 0 {
-//            return self.fetchedResultsController.sections![section].numberOfObjects
-//        } else {
-            return self.imageURLArray.count
-//        }
+        if self.fetchedResultsController.fetchedObjects?.count != nil {
+            return self.fetchedResultsController.sections![section].numberOfObjects
+        } else {
+            return PhotoAlbumViewController.imageURLArray.count
+        }
     }
     
     func collectionView(_ collectionView: UICollectionView, cellForItemAt indexPath: IndexPath) -> UICollectionViewCell {
@@ -215,35 +234,42 @@ extension PhotoAlbumViewController: UICollectionViewDelegate, UICollectionViewDa
         cell.imageView.image = UIImage(named: "ImagePlaceholder")
         cell.activityIndicator.startAnimating()
         
-//        // Check if the selected pin contains persisted photos
-//        if self.fetchedResultsController.fetchedObjects?.count != 0 {
-//            let image = self.fetchedResultsController.object(at: indexPath) as! Photo
-//            let imageData = image.imageData
-//
-//            // Set the image from the imageData and stop the activity indicator animation
-//            cell.imageView.image = UIImage(data: imageData as Data)
-//            cell.activityIndicator.stopAnimating()
-//
-//        } else {
-//
-        DispatchQueue.global(qos: .background).async {
+        // Check if the selected pin contains persisted photos
+        if self.fetchedResultsController.fetchedObjects?.count != nil {
+            let image = self.fetchedResultsController.object(at: indexPath) as! Photo
+            let imageData = image.imageData
+
+            // Set the image from the imageData and stop the activity indicator animation
+            cell.imageView.image = UIImage(data: imageData as Data)
+            cell.activityIndicator.stopAnimating()
+
+        } else {
             
-            // Download image data if selected pin has no persisted photos
-            let imageURLString = self.imageURLArray[(indexPath as NSIndexPath).row]
-            let imageData = try? Data(contentsOf: URL(string: imageURLString)!)
-            
-            // Create Photo object
-            let photoObject = Photo(imageData: imageData! as NSData, context: self.sharedContext)
-            photoObject.pin = PhotoAlbumViewController.selectedPin
-            
-            performUIUpdatesOnMain {
+            DispatchQueue.global(qos: .background).async {
                 
-                // Set the image from the imageData and stop the activity indicator animation
-                cell.imageView.image = UIImage(data: imageData!)
-                cell.activityIndicator.stopAnimating()
+                // Download image data if selected pin has no persisted photos
+                let imageURLString = PhotoAlbumViewController.imageURLArray[(indexPath as NSIndexPath).row]
+                let imageData = try? Data(contentsOf: URL(string: imageURLString)!)
+                
+                // Create Photo object
+                let photoObject = Photo(imageData: imageData! as NSData, context: self.sharedContext)
+                photoObject.pin = PhotoAlbumViewController.selectedPin
+                
+//                // Save context
+//                do {
+//                    try CoreDataStack.sharedInstance().saveContext()
+//                } catch {
+//                    print ("Unable to save context!")
+//                }
+                
+                performUIUpdatesOnMain {
+                    
+                    // Set the image from the imageData and stop the activity indicator animation
+                    cell.imageView.image = UIImage(data: imageData!)
+                    cell.activityIndicator.stopAnimating()
+                }
             }
         }
-//        }
         return cell
     }
     
@@ -271,7 +297,7 @@ extension PhotoAlbumViewController: NSFetchedResultsControllerDelegate {
 
         // Create fresh arrays when controller is about to make changes
         self.deletedIndexPaths = [IndexPath]()
-        self.updatedIndexPaths = [IndexPath]()
+//        self.updatedIndexPaths = [IndexPath]()
 
     }
 
@@ -280,8 +306,8 @@ extension PhotoAlbumViewController: NSFetchedResultsControllerDelegate {
         switch type {
         case .delete:
             self.deletedIndexPaths.append(indexPath!)
-        case .update:
-            self.updatedIndexPaths.append(indexPath!)
+//        case .update:
+//            self.updatedIndexPaths.append(indexPath!)
         default:
             break
         }
@@ -295,10 +321,10 @@ extension PhotoAlbumViewController: NSFetchedResultsControllerDelegate {
             for indexPath in self.deletedIndexPaths {
                 self.collectionView.deleteItems(at: [indexPath])
             }
-
-            for indexPath in self.updatedIndexPaths {
-                self.collectionView.reloadItems(at: [indexPath])
-            }
+//
+//            for indexPath in self.updatedIndexPaths {
+//                self.collectionView.reloadItems(at: [indexPath])
+//            }
 
         }, completion: nil)
     }
