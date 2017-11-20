@@ -196,17 +196,17 @@ extension PhotoAlbumViewController: MKMapViewDelegate {
 
 extension PhotoAlbumViewController: UICollectionViewDelegate, UICollectionViewDataSource {
     
-    func numberOfSections(in collectionView: UICollectionView) -> Int {
-        return self.fetchedResultsController.sections?.count ?? 0
-    }
+//    func numberOfSections(in collectionView: UICollectionView) -> Int {
+//        return self.fetchedResultsController.sections?.count ?? 0
+//    }
     
     func collectionView(_ collectionView: UICollectionView, numberOfItemsInSection section: Int) -> Int {
         
-        if self.fetchedResultsController.fetchedObjects?.count != 0 {
-            return self.fetchedResultsController.sections![section].numberOfObjects
-        } else {
+//        if self.fetchedResultsController.fetchedObjects?.count != 0 {
+//            return self.fetchedResultsController.sections![section].numberOfObjects
+//        } else {
             return self.imageURLArray.count
-        }
+//        }
     }
     
     func collectionView(_ collectionView: UICollectionView, cellForItemAt indexPath: IndexPath) -> UICollectionViewCell {
@@ -216,30 +216,35 @@ extension PhotoAlbumViewController: UICollectionViewDelegate, UICollectionViewDa
         cell.imageView.image = UIImage(named: "ImagePlaceholder")
         cell.activityIndicator.startAnimating()
         
-        // Check if the selected pin contains persisted photos
-        if self.fetchedResultsController.fetchedObjects?.count != 0 {
-            let image = self.fetchedResultsController.object(at: indexPath) as! Photo
-            let imageData = image.imageData
-            
-            // Set the image from the imageData and stop the activity indicator animation
-            cell.imageView.image = UIImage(data: imageData as Data)
-            cell.activityIndicator.stopAnimating()
-            
-        } else {
+//        // Check if the selected pin contains persisted photos
+//        if self.fetchedResultsController.fetchedObjects?.count != 0 {
+//            let image = self.fetchedResultsController.object(at: indexPath) as! Photo
+//            let imageData = image.imageData
+//
+//            // Set the image from the imageData and stop the activity indicator animation
+//            cell.imageView.image = UIImage(data: imageData as Data)
+//            cell.activityIndicator.stopAnimating()
+//
+//        } else {
+//
+        DispatchQueue.global(qos: .background).async {
             
             // Download image data if selected pin has no persisted photos
-            let imageURLString = imageURLArray[(indexPath as NSIndexPath).row]
+            let imageURLString = self.imageURLArray[(indexPath as NSIndexPath).row]
             let imageData = try? Data(contentsOf: URL(string: imageURLString)!)
             
             // Create Photo object
             let photoObject = Photo(imageData: imageData! as NSData, context: self.sharedContext)
             photoObject.pin = PhotoAlbumViewController.selectedPin
             
-            // Set the image from the imageData and stop the activity indicator animation
-            cell.imageView.image = UIImage(data: imageData!)
-            cell.activityIndicator.stopAnimating()
+            performUIUpdatesOnMain {
+                
+                // Set the image from the imageData and stop the activity indicator animation
+                cell.imageView.image = UIImage(data: imageData!)
+                cell.activityIndicator.stopAnimating()
+            }
         }
-        
+//        }
         return cell
     }
     
