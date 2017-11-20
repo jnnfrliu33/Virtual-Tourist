@@ -131,7 +131,6 @@ class PhotoAlbumViewController: UIViewController {
                 performUIUpdatesOnMain {
                     self.collectionView.reloadData()
                 }
-                print (self.imageURLArray)
             }
         }
     }
