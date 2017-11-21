@@ -259,7 +259,7 @@ extension PhotoAlbumViewController: UICollectionViewDelegate, UICollectionViewDa
                 performUIUpdatesOnMain {
                     
                     // Set the image from the imageData and stop the activity indicator animation
-                    cell.imageView.image = UIImage(data: imageData!)
+                    cell.imageView.image = UIImage(data: photoObject.imageData as Data)
                     cell.activityIndicator.stopAnimating()
                 }
             }

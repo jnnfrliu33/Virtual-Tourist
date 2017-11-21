@@ -152,13 +152,8 @@ extension MapViewController: MKMapViewDelegate {
         } else {
             let controller = self.storyboard!.instantiateViewController(withIdentifier: "PhotoAlbumViewController") as! PhotoAlbumViewController
             
-            print ("annotation coordinate: \(String(describing: view.annotation?.coordinate))")
-            
             // Save the Pin in PhotoAlbumViewController to be used
             PhotoAlbumViewController.selectedPin = findPersistedPin((view.annotation?.coordinate)!)
-            
-            print ("findPersistedPin: \(String(describing: findPersistedPin((view.annotation?.coordinate)!)))")
-            print ("selectedPin: \(PhotoAlbumViewController.selectedPin!)")
             
             self.navigationController?.pushViewController(controller, animated: true)
         }
