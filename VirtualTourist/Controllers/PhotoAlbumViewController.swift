@@ -24,7 +24,7 @@ class PhotoAlbumViewController: UIViewController {
     // MARK: Properties
     
     static var selectedPin: Pin? = nil
-    static var imageURLArray = [String]()
+    var imageURLArray = [String]()
     
     // To keep track of selections, deletions and updates
     var selectedIndexPaths = [IndexPath]()
@@ -56,8 +56,6 @@ class PhotoAlbumViewController: UIViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
         
-        print ("Initial array: \(PhotoAlbumViewController.imageURLArray)")
-        
         // Zoom in the map on the location
         centerMapOnLocation((PhotoAlbumViewController.selectedPin?.coordinate)!)
         
@@ -82,8 +80,6 @@ class PhotoAlbumViewController: UIViewController {
         } else {
             // Get image URLs from Flickr if selected pin has no persisted photos
             getImageURLs()
-            
-            print("Filled array: \(PhotoAlbumViewController.imageURLArray)")
         }
     }
     
@@ -129,10 +125,8 @@ class PhotoAlbumViewController: UIViewController {
             if let error = error {
                 AlertViewController.showAlert(controller: self, message: error.localizedDescription)
             } else {
-                PhotoAlbumViewController.imageURLArray.removeAll()
-                
                 if let imageURLArray = imageURLArray as? [String] {
-                    PhotoAlbumViewController.imageURLArray = imageURLArray
+                    self.imageURLArray = imageURLArray
                 }
                 
                 performUIUpdatesOnMain {
@@ -223,7 +217,7 @@ extension PhotoAlbumViewController: UICollectionViewDelegate, UICollectionViewDa
         if self.fetchedResultsController.fetchedObjects?.count != nil {
             return self.fetchedResultsController.sections![section].numberOfObjects
         } else {
-            return PhotoAlbumViewController.imageURLArray.count
+            return self.imageURLArray.count
         }
     }
     
@@ -248,19 +242,19 @@ extension PhotoAlbumViewController: UICollectionViewDelegate, UICollectionViewDa
             DispatchQueue.global(qos: .background).async {
                 
                 // Download image data if selected pin has no persisted photos
-                let imageURLString = PhotoAlbumViewController.imageURLArray[(indexPath as NSIndexPath).row]
+                let imageURLString = self.imageURLArray[(indexPath as NSIndexPath).row]
                 let imageData = try? Data(contentsOf: URL(string: imageURLString)!)
                 
                 // Create Photo object
                 let photoObject = Photo(imageData: imageData! as NSData, context: self.sharedContext)
                 photoObject.pin = PhotoAlbumViewController.selectedPin
                 
-//                // Save context
-//                do {
-//                    try CoreDataStack.sharedInstance().saveContext()
-//                } catch {
-//                    print ("Unable to save context!")
-//                }
+                // Save context
+                do {
+                    try CoreDataStack.sharedInstance().saveContext()
+                } catch {
+                    print ("Unable to save context!")
+                }
                 
                 performUIUpdatesOnMain {
                     
