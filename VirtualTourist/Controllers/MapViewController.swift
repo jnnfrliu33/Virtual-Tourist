@@ -77,7 +77,7 @@ class MapViewController: UIViewController, NSFetchedResultsControllerDelegate {
         // Only allow pins to be dropped once
         if sender.state == .began {
             
-            CoreDataStack.sharedInstance().context.performAndWait {
+            sharedContext.performAndWait {
                 
                 // Create Pin object
                 _ = Pin(latitude: coordinate.latitude as Double, longitude: coordinate.longitude as Double, context: self.sharedContext)

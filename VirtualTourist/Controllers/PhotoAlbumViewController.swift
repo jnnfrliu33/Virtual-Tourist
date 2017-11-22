@@ -209,7 +209,7 @@ extension PhotoAlbumViewController: UICollectionViewDelegate, UICollectionViewDa
     
     func numberOfSections(in collectionView: UICollectionView) -> Int {
         
-        if self.fetchedResultsController.fetchedObjects?.count != nil {
+        if let fetchedPhotos = self.fetchedResultsController.fetchedObjects, fetchedPhotos.count > 0 {
             return (self.fetchedResultsController.sections?.count)!
         } else {
             return 1
@@ -250,7 +250,7 @@ extension PhotoAlbumViewController: UICollectionViewDelegate, UICollectionViewDa
                 
                 if let imageData = try? Data(contentsOf: URL(string: imageURLString)!) {
                     
-                    CoreDataStack.sharedInstance().context.performAndWait {
+                    self.sharedContext.performAndWait {
                         
                         // Create Photo object
                         let photoObject = Photo(imageData: imageData as NSData, context: self.sharedContext)
@@ -301,6 +301,7 @@ extension PhotoAlbumViewController: UICollectionViewDelegate, UICollectionViewDa
 extension PhotoAlbumViewController: NSFetchedResultsControllerDelegate {
     
     func controllerWillChangeContent(_ controller: NSFetchedResultsController<NSFetchRequestResult>) {
+        
         // Create fresh array when controller is about to make changes
         self.deletedIndexPaths = [IndexPath]()
     }
