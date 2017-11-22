@@ -30,7 +30,11 @@ extension FlickrClient {
         
         // Add the bounding box to the method's parameters
         var methodParametersWithBBoxString = methodParameters
-        methodParametersWithBBoxString[FlickrParameterKeys.BoundingBox] = FlickrClient.bboxString() as AnyObject
+
+        // To access pin from the main queue
+        CoreDataStack.sharedInstance().context.performAndWait {
+            methodParametersWithBBoxString[FlickrParameterKeys.BoundingBox] = FlickrClient.bboxString() as AnyObject
+        }
         
         let _ = self.taskForGETMethod(methodParametersWithBBoxString) { (photosDictionary, error) in
             
@@ -56,8 +60,12 @@ extension FlickrClient {
         
         // Add the page number to the method's parameters
         var methodParametersWithPageNumber = methodParameters
-        methodParametersWithPageNumber[FlickrParameterKeys.BoundingBox] = FlickrClient.bboxString() as AnyObject
         methodParametersWithPageNumber[FlickrParameterKeys.Page] = withPageNumber as AnyObject?
+        
+        // To access pin from the main queue
+        CoreDataStack.sharedInstance().context.performAndWait {
+            methodParametersWithPageNumber[FlickrParameterKeys.BoundingBox] = FlickrClient.bboxString() as AnyObject
+        }
         
         let _ = self.taskForGETMethod(methodParametersWithPageNumber) { (photosDictionary, error) in
             
@@ -83,7 +91,7 @@ extension FlickrClient {
     // MARK: Helpers
     
     static func bboxString() -> String {
-        
+            
         // Ensure bbox is bounded by minimum and maximums
         if let latitude = PhotoAlbumViewController.selectedPin?.latitude, let longitude = PhotoAlbumViewController.selectedPin?.longitude {
             let minimumLon = max(longitude - Flickr.SearchBBoxHalfWidth, Flickr.SearchLonRange.0)

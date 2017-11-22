@@ -73,20 +73,23 @@ class MapViewController: UIViewController, NSFetchedResultsControllerDelegate {
         // Create coordinate point object
         let point = sender.location(in: self.mapView)
         let coordinate = self.mapView.convert(point, toCoordinateFrom: self.mapView)
-
+        
         // Only allow pins to be dropped once
         if sender.state == .began {
             
-            // Create Pin object
-            _ = Pin(latitude: coordinate.latitude as Double, longitude: coordinate.longitude as Double, context: self.sharedContext)
-            
-            // Save context
-            do {
-                try CoreDataStack.sharedInstance().saveContext()
-            } catch {
-                print ("Unable to save context!")
+            CoreDataStack.sharedInstance().context.performAndWait {
+                
+                // Create Pin object
+                _ = Pin(latitude: coordinate.latitude as Double, longitude: coordinate.longitude as Double, context: self.sharedContext)
+                
+                // Save context
+                do {
+                    try CoreDataStack.sharedInstance().saveContext()
+                } catch {
+                    print ("Unable to save context!")
+                }
             }
-
+            
             // Set the annotation on the map
             let annotation = MKPointAnnotation()
             annotation.coordinate = coordinate
