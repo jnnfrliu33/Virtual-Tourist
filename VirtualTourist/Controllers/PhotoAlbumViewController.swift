@@ -29,6 +29,7 @@ class PhotoAlbumViewController: UIViewController {
     // To keep track of selections, deletions and updates
     var selectedIndexPaths = [IndexPath]()
     var deletedIndexPaths: [IndexPath]!
+    var insertedIndexPaths: [IndexPath]!
     
     // Shared context
     lazy var sharedContext: NSManagedObjectContext = {
@@ -152,6 +153,13 @@ class PhotoAlbumViewController: UIViewController {
                 self.sharedContext.delete(photo)
             }
         }
+        
+        // Save context
+        do {
+            try CoreDataStack.sharedInstance().saveContext()
+        } catch {
+            print ("Unable to save context!")
+        }
 
         // Get new set of image URLs
         getImageURLs()
@@ -174,8 +182,6 @@ class PhotoAlbumViewController: UIViewController {
         } catch {
             print ("Unable to save context!")
         }
-        
-        self.collectionView.reloadData()
         
         selectedIndexPaths = [IndexPath]()
     }
@@ -302,15 +308,20 @@ extension PhotoAlbumViewController: NSFetchedResultsControllerDelegate {
     
     func controllerWillChangeContent(_ controller: NSFetchedResultsController<NSFetchRequestResult>) {
         
-        // Create fresh array when controller is about to make changes
+        // Create fresh arrays when controller is about to make changes
+        self.insertedIndexPaths = [IndexPath]()
         self.deletedIndexPaths = [IndexPath]()
     }
 
     func controller(_ controller: NSFetchedResultsController<NSFetchRequestResult>, didChange anObject: Any, at indexPath: IndexPath?, for type: NSFetchedResultsChangeType, newIndexPath: IndexPath?) {
         
         switch type {
+        case .insert:
+            self.insertedIndexPaths.append(newIndexPath!)
+            break
         case .delete:
             self.deletedIndexPaths.append(indexPath!)
+            break
         default:
             break
         }
@@ -320,9 +331,15 @@ extension PhotoAlbumViewController: NSFetchedResultsControllerDelegate {
             
         // Perform batch updates
         self.collectionView.performBatchUpdates({ () -> Void in
+            
             for indexPath in self.deletedIndexPaths {
                 self.collectionView.deleteItems(at: [indexPath])
             }
+            
+            for indexPath in self.insertedIndexPaths {
+                self.collectionView.insertItems(at: [indexPath])
+            }
+            
         }, completion: nil)
     }
 }
