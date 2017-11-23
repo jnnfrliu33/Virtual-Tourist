@@ -183,7 +183,8 @@ class PhotoAlbumViewController: UIViewController {
             print ("Unable to save context!")
         }
         
-        selectedIndexPaths = [IndexPath]()
+        // Reset selectedIndexPaths
+        selectedIndexPaths.removeAll()
     }
 }
 
@@ -253,9 +254,9 @@ extension PhotoAlbumViewController: UICollectionViewDelegate, UICollectionViewDa
                 
                 // Download image data if selected pin has no persisted photos
                 let imageURLString = self.imageURLArray[(indexPath as NSIndexPath).row]
-                
+
                 if let imageData = try? Data(contentsOf: URL(string: imageURLString)!) {
-                    
+
                     self.sharedContext.performAndWait {
                         
                         // Create Photo object
@@ -332,12 +333,12 @@ extension PhotoAlbumViewController: NSFetchedResultsControllerDelegate {
         // Perform batch updates
         self.collectionView.performBatchUpdates({ () -> Void in
             
-            for indexPath in self.deletedIndexPaths {
-                self.collectionView.deleteItems(at: [indexPath])
-            }
-            
             for indexPath in self.insertedIndexPaths {
                 self.collectionView.insertItems(at: [indexPath])
+            }
+            
+            for indexPath in self.deletedIndexPaths {
+                self.collectionView.deleteItems(at: [indexPath])
             }
             
         }, completion: nil)
