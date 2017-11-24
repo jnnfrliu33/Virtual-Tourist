@@ -99,7 +99,7 @@ class PhotoAlbumViewController: UIViewController {
         if selectedIndexPaths.isEmpty {
             refreshPhotos()
         } else {
-            deletedSelectedPhotos()
+            deleteSelectedPhotos()
         }
     }
     
@@ -134,16 +134,18 @@ class PhotoAlbumViewController: UIViewController {
                             let image = Photo(context: self.sharedContext)
                             image.imageURL = imageURL
                             image.pin = PhotoAlbumViewController.selectedPin
+                            
+                            // Save context
+                            do {
+                                try CoreDataStack.sharedInstance().saveContext()
+                            } catch {
+                                print ("Unable to save context!")
+                            }
                         }
                     }
                 }
                 
                 self.sharedContext.performAndWait {
-                    do {
-                        try CoreDataStack.sharedInstance().saveContext()
-                    } catch {
-                        print ("Unable to save context!")
-                    }
                     
                     do {
                         try self.fetchedResultsController.performFetch()
@@ -159,7 +161,7 @@ class PhotoAlbumViewController: UIViewController {
     
     func downloadImageData(_ photo: Photo, completionHandlerForSaveImageData: @escaping (_ success: Bool, _ errorString: String?) -> Void) {
         
-        if let imageURL = URL(string: photo.imageURL) {
+        if let imageURL = URL(string: photo.imageURL!) {
             
             DispatchQueue.global(qos: .background).async {
                 if let imageData = try? Data(contentsOf: imageURL) {
@@ -196,12 +198,11 @@ class PhotoAlbumViewController: UIViewController {
     }
     
     func refreshPhotos() {
-        
         if let fetchedPhotos = self.fetchedResultsController.fetchedObjects {
             
             // Delete current set of photos
-            for photo in fetchedPhotos as! [Photo] {
-                self.sharedContext.delete(photo)
+            for photo in fetchedPhotos {
+                self.sharedContext.delete(photo as! NSManagedObject)
             }
             
             self.sharedContext.performAndWait {
@@ -219,26 +220,27 @@ class PhotoAlbumViewController: UIViewController {
         downloadImageURLs()
     }
     
-    func deletedSelectedPhotos() {
-        var photosToDelete = [Photo]()
-            
+    func deleteSelectedPhotos() {
         for indexPath in selectedIndexPaths {
-            photosToDelete.append(self.fetchedResultsController.object(at: indexPath) as! Photo)
-        }
-        
-        for photo in photosToDelete {
-            self.sharedContext.delete(photo)
-        }
-        
-        // Save context
-        do {
-            try CoreDataStack.sharedInstance().saveContext()
-        } catch {
-            print ("Unable to save context!")
+            
+            if let fetchedPhotos = self.fetchedResultsController.fetchedObjects {
+                self.sharedContext.delete(fetchedPhotos[(indexPath as NSIndexPath).item] as! NSManagedObject)
+                
+                // Save context
+                self.sharedContext.performAndWait {
+                    do {
+                        try CoreDataStack.sharedInstance().saveContext()
+                    } catch {
+                        print ("Unable to save context!")
+                    }
+                }
+            }
         }
         
         // Reset selectedIndexPaths
-        selectedIndexPaths.removeAll()
+        selectedIndexPaths = [IndexPath]()
+        
+        configureBottomButton()
     }
 }
 
@@ -294,25 +296,27 @@ extension PhotoAlbumViewController: UICollectionViewDelegate, UICollectionViewDa
                 cell.activityIndicator.stopAnimating()
                 
             } else {
-                
-                // Download image data if photo object only has URL stored
-                downloadImageData(photoObject) { (success, errorString) in
+                if photoObject.imageURL != nil {
                     
-                    if success {
+                    // Download image data if photo object only has URL stored
+                    downloadImageData(photoObject) { (success, errorString) in
                         
-                        // Fetch newly downloaded photos
-                        do {
-                            try self.fetchedResultsController.performFetch()
-                        } catch {
-                            print ("Unable to fetch photos!")
+                        if success {
+                            
+                            // Fetch newly downloaded photos
+                            do {
+                                try self.fetchedResultsController.performFetch()
+                            } catch {
+                                print ("Unable to fetch photos!")
+                            }
+                            
+                            performUIUpdatesOnMain {
+                                self.collectionView.reloadData()
+                            }
+                            
+                        } else {
+                            print (errorString!)
                         }
-                        
-                        performUIUpdatesOnMain {
-                            self.collectionView.reloadData()
-                        }
-
-                    } else {
-                        print (errorString!)
                     }
                 }
             }
@@ -321,17 +325,14 @@ extension PhotoAlbumViewController: UICollectionViewDelegate, UICollectionViewDa
     }
     
     func collectionView(_ collectionView: UICollectionView, didSelectItemAt indexPath: IndexPath) {
-        let cell = collectionView.cellForItem(at: indexPath) as! PhotoAlbumCollectionViewCell
-        
-        // Toggle its presence in selectedIndexPaths whenever a cell is tapped
-        if let index = selectedIndexPaths.index(of: indexPath) {
-            cell.imageView.alpha = 1.0
-            selectedIndexPaths.remove(at: index)
-        } else {
-            cell.imageView.alpha = 0.5
-            selectedIndexPaths.append(indexPath)
+        selectedIndexPaths.append(indexPath)
+        configureBottomButton()
+    }
+    
+    func collectionView(_ collectionView: UICollectionView, didDeselectItemAt indexPath: IndexPath) {
+        if let indexToRemove = selectedIndexPaths.index(of: indexPath) {
+            selectedIndexPaths.remove(at: indexToRemove)
         }
-        
         configureBottomButton()
     }
 }

@@ -14,4 +14,13 @@ class PhotoAlbumCollectionViewCell: UICollectionViewCell {
     
     @IBOutlet weak var imageView: UIImageView!
     @IBOutlet weak var activityIndicator: UIActivityIndicatorView!
+    
+    // MARK: Properties
+    
+    // Toggle the alpha of selected cell
+    override var isSelected: Bool {
+        didSet {
+            imageView.alpha = isSelected ? 0.5 : 1.0
+        }
+    }
 }
