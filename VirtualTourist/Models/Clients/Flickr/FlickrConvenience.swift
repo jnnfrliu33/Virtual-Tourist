@@ -44,7 +44,7 @@ extension FlickrClient {
                 if let totalPages = photosDictionary?[FlickrResponseKeys.Pages] as? Int, totalPages > 0 {
                     
                     // Pick a random page
-                    let pageLimit = min(totalPages, 40)
+                    let pageLimit = min(totalPages, 190)
                     let randomPage = Int(arc4random_uniform(UInt32(pageLimit))) + 1
                     
                     self.getPhotos(methodParametersWithBBoxString, withPageNumber: randomPage, completionHandlerForGetPhotos: completionHandlerForGetPhotos)
