@@ -24,12 +24,11 @@ class PhotoAlbumViewController: UIViewController {
     // MARK: Properties
     
     static var selectedPin: Pin? = nil
-    var imageURLArray = [String]()
     
     // To keep track of selections, deletions and updates
     var selectedIndexPaths = [IndexPath]()
-    var deletedIndexPaths: [IndexPath]!
     var insertedIndexPaths: [IndexPath]!
+    var deletedIndexPaths: [IndexPath]!
     
     // Shared context
     lazy var sharedContext: NSManagedObjectContext = {
@@ -78,8 +77,8 @@ class PhotoAlbumViewController: UIViewController {
             }
             
         } else {
-            // Get image URLs from Flickr if selected pin has no persisted photos
-            getImageURLs()
+            // Save image URLs from Flickr if selected pin has no persisted photos
+            saveImageURLs()
         }
     }
     
@@ -120,17 +119,67 @@ class PhotoAlbumViewController: UIViewController {
         flowLayout.itemSize = CGSize(width: dimension, height: dimension)
     }
     
-    func getImageURLs() {
+    func saveImageURLs() {
         FlickrClient.sharedInstance().getPhotos() { (imageURLArray, error) in
             if let error = error {
                 AlertViewController.showAlert(controller: self, message: error.localizedDescription)
             } else {
                 if let imageURLArray = imageURLArray as? [String] {
-                    self.imageURLArray = imageURLArray
+                    
+                    for imageURL in imageURLArray {
+                        
+                        self.sharedContext.performAndWait {
+                            let image = Photo(context: self.sharedContext)
+                            image.imageURL = imageURL
+                            image.pin = PhotoAlbumViewController.selectedPin
+                        }
+                    }
                 }
                 
-                performUIUpdatesOnMain {
+                self.sharedContext.performAndWait {
+                    do {
+                        try CoreDataStack.sharedInstance().saveContext()
+                    } catch {
+                        print ("Unable to save context!")
+                    }
+                    
+                    do {
+                        try self.fetchedResultsController.performFetch()
+                    } catch {
+                        print ("Unable to fetch photos!")
+                    }
+                    
                     self.collectionView.reloadData()
+                }
+            }
+        }
+    }
+    
+    func saveImageData(_ photo: Photo, completionHandlerForSaveImageData: @escaping (_ success: Bool, _ errorString: String?) -> Void) {
+        
+        if let imageURL = URL(string: photo.imageURL) {
+            
+            DispatchQueue.global(qos: .background).async {
+                if let imageData = try? Data(contentsOf: imageURL) {
+                    
+                    self.sharedContext.performAndWait {
+                        photo.imageData = imageData as NSData
+                        
+                        // Save context
+                        do {
+                            try CoreDataStack.sharedInstance().saveContext()
+                        } catch {
+                            print ("Unable to save context!")
+                        }
+                        
+                        completionHandlerForSaveImageData(true, nil)
+                    }
+                    
+                } else {
+                    
+                    self.sharedContext.performAndWait {
+                        completionHandlerForSaveImageData(false, "Unable to download image from URL: \(imageURL)")
+                    }
                 }
             }
         }
@@ -149,7 +198,7 @@ class PhotoAlbumViewController: UIViewController {
         if let fetchedPhotos = self.fetchedResultsController.fetchedObjects, fetchedPhotos.count > 0 {
             
             // Delete current set of photos
-            for photo in self.fetchedResultsController.fetchedObjects as! [Photo] {
+            for photo in fetchedPhotos as! [Photo] {
                 self.sharedContext.delete(photo)
             }
         }
@@ -162,7 +211,7 @@ class PhotoAlbumViewController: UIViewController {
         }
 
         // Get new set of image URLs
-        getImageURLs()
+        saveImageURLs()
     }
     
     func deletedSelectedPhotos() {
@@ -215,21 +264,11 @@ extension PhotoAlbumViewController: MKMapViewDelegate {
 extension PhotoAlbumViewController: UICollectionViewDelegate, UICollectionViewDataSource {
     
     func numberOfSections(in collectionView: UICollectionView) -> Int {
-        
-        if let fetchedPhotos = self.fetchedResultsController.fetchedObjects, fetchedPhotos.count > 0 {
-            return (self.fetchedResultsController.sections?.count)!
-        } else {
-            return 1
-        }
+        return self.fetchedResultsController.sections?.count ?? 0
     }
     
     func collectionView(_ collectionView: UICollectionView, numberOfItemsInSection section: Int) -> Int {
-        
-        if let fetchedPhotos = self.fetchedResultsController.fetchedObjects, fetchedPhotos.count > 0  {
-            return self.fetchedResultsController.sections![section].numberOfObjects
-        } else {
-            return self.imageURLArray.count
-        }
+        return self.fetchedResultsController.sections![section].numberOfObjects
     }
     
     func collectionView(_ collectionView: UICollectionView, cellForItemAt indexPath: IndexPath) -> UICollectionViewCell {
@@ -239,47 +278,39 @@ extension PhotoAlbumViewController: UICollectionViewDelegate, UICollectionViewDa
         cell.imageView.image = UIImage(named: "ImagePlaceholder")
         cell.activityIndicator.startAnimating()
         
-        // Check if the selected pin contains persisted photos
         if let fetchedPhotos = self.fetchedResultsController.fetchedObjects, fetchedPhotos.count > 0 {
-            let image = fetchedPhotos[(indexPath as NSIndexPath).item] as! Photo
-            let imageData = image.imageData
-
-            // Set the image from the imageData and stop the activity indicator animation
-            cell.imageView.image = UIImage(data: imageData as Data)
-            cell.activityIndicator.stopAnimating()
-
-        } else {
+            let photoObject = fetchedPhotos[(indexPath as NSIndexPath).item] as! Photo
             
-            DispatchQueue.global(qos: .background).async {
+            // Check if image data has already been downloaded
+            if let imageData = photoObject.imageData {
                 
-                // Download image data if selected pin has no persisted photos
-                let imageURLString = self.imageURLArray[(indexPath as NSIndexPath).row]
-
-                if let imageData = try? Data(contentsOf: URL(string: imageURLString)!) {
-
-                    self.sharedContext.performAndWait {
+                // Set the image from the imageData and stop the activity indicator animation
+                cell.imageView.image = UIImage(data: imageData as Data)
+                cell.activityIndicator.stopAnimating()
+                
+            } else {
+                
+                // Download image data if photo object only has URL stored
+                saveImageData(photoObject) { (success, errorString) in
+                    
+                    if success {
                         
-                        // Create Photo object
-                        let photoObject = Photo(imageData: imageData as NSData, context: self.sharedContext)
-                        photoObject.pin = PhotoAlbumViewController.selectedPin
-                        
-                        // Save context
-                        do {
-                            try CoreDataStack.sharedInstance().saveContext()
-                        } catch {
-                            print ("Unable to save context!")
-                        }
-                        
-                        // Fetch newly added photos
+                        // Fetch newly downloaded photos
                         do {
                             try self.fetchedResultsController.performFetch()
                         } catch {
                             print ("Unable to fetch photos!")
                         }
-
-                        // Set the image from the imageData and stop the activity indicator animation
-                        cell.imageView.image = UIImage(data: photoObject.imageData as Data)
-                        cell.activityIndicator.stopAnimating()
+                        
+                        performUIUpdatesOnMain {
+                            self.collectionView.reloadData()
+                        }
+                        
+//                        // Set the image from the imageData and stop the activity indicator animation
+//                        cell.imageView.image = UIImage(data: photoObject.imageData as! Data)
+//                        cell.activityIndicator.stopAnimating()
+                    } else {
+                        print (errorString!)
                     }
                 }
             }
