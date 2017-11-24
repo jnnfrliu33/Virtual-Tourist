@@ -159,6 +159,9 @@ extension MapViewController: MKMapViewDelegate {
             PhotoAlbumViewController.selectedPin = findPersistedPin((view.annotation?.coordinate)!)
             
             self.navigationController?.pushViewController(controller, animated: true)
+            
+            // Deselect the annotation so that pin is selectable again after returning from photo album
+            mapView.deselectAnnotation(view.annotation, animated: true)
         }
     }
     
