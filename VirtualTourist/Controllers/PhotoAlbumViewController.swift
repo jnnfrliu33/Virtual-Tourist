@@ -66,19 +66,21 @@ class PhotoAlbumViewController: UIViewController {
         setCollectionFlowLayout()
         configureBottomButton()
         
+        // Collection view must allow multiple cells to be selected
+        collectionView.allowsMultipleSelection = true
+        
+        // Fetch persisted photos
+        do {
+            try self.fetchedResultsController.performFetch()
+        } catch {
+            print ("Unable to fetch photos!")
+        }
+        
         // Check if the selected pin contains persisted photos
-        if PhotoAlbumViewController.selectedPin?.photos?.count != 0 {
+        if let fetchedPhotos = self.fetchedResultsController.fetchedObjects, fetchedPhotos.count == 0 {
             
-            // Fetch persisted photos
-            do {
-                try self.fetchedResultsController.performFetch()
-            } catch {
-                print ("Unable to fetch photos!")
-            }
-            
-        } else {
-            // Save image URLs from Flickr if selected pin has no persisted photos
-            saveImageURLs()
+            // Download image URLs from Flickr if selected pin has no persisted photos
+            downloadImageURLs()
         }
     }
     
@@ -119,7 +121,7 @@ class PhotoAlbumViewController: UIViewController {
         flowLayout.itemSize = CGSize(width: dimension, height: dimension)
     }
     
-    func saveImageURLs() {
+    func downloadImageURLs() {
         FlickrClient.sharedInstance().getPhotos() { (imageURLArray, error) in
             if let error = error {
                 AlertViewController.showAlert(controller: self, message: error.localizedDescription)
@@ -155,7 +157,7 @@ class PhotoAlbumViewController: UIViewController {
         }
     }
     
-    func saveImageData(_ photo: Photo, completionHandlerForSaveImageData: @escaping (_ success: Bool, _ errorString: String?) -> Void) {
+    func downloadImageData(_ photo: Photo, completionHandlerForSaveImageData: @escaping (_ success: Bool, _ errorString: String?) -> Void) {
         
         if let imageURL = URL(string: photo.imageURL) {
             
@@ -195,23 +197,26 @@ class PhotoAlbumViewController: UIViewController {
     
     func refreshPhotos() {
         
-        if let fetchedPhotos = self.fetchedResultsController.fetchedObjects, fetchedPhotos.count > 0 {
+        if let fetchedPhotos = self.fetchedResultsController.fetchedObjects {
             
             // Delete current set of photos
             for photo in fetchedPhotos as! [Photo] {
                 self.sharedContext.delete(photo)
             }
-        }
-        
-        // Save context
-        do {
-            try CoreDataStack.sharedInstance().saveContext()
-        } catch {
-            print ("Unable to save context!")
+            
+            self.sharedContext.performAndWait {
+                
+                // Save context
+                do {
+                    try CoreDataStack.sharedInstance().saveContext()
+                } catch {
+                    print ("Unable to save context!")
+                }
+            }
         }
 
         // Get new set of image URLs
-        saveImageURLs()
+        downloadImageURLs()
     }
     
     func deletedSelectedPhotos() {
@@ -291,7 +296,7 @@ extension PhotoAlbumViewController: UICollectionViewDelegate, UICollectionViewDa
             } else {
                 
                 // Download image data if photo object only has URL stored
-                saveImageData(photoObject) { (success, errorString) in
+                downloadImageData(photoObject) { (success, errorString) in
                     
                     if success {
                         
@@ -305,10 +310,7 @@ extension PhotoAlbumViewController: UICollectionViewDelegate, UICollectionViewDa
                         performUIUpdatesOnMain {
                             self.collectionView.reloadData()
                         }
-                        
-//                        // Set the image from the imageData and stop the activity indicator animation
-//                        cell.imageView.image = UIImage(data: photoObject.imageData as! Data)
-//                        cell.activityIndicator.stopAnimating()
+
                     } else {
                         print (errorString!)
                     }
